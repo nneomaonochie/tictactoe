@@ -5,7 +5,7 @@ open Protocol
 (* Exercise 1.2.
 
    Implement a game AI that just picks a random available position. Feel free
-   to raise if there is not an available position.
+   to raise ~an error~ if there is not an available position.
 
    After you are done, update [compute_next_move] to use your
    [random_move_strategy]. *)
@@ -14,9 +14,13 @@ let random_move_strategy
   ~(pieces : Piece.t Position.Map.t)
   : Position.t
   =
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
+  let available_pos =
+    Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces
+  in
+  (* if no availible positons, it creates a position of (-1, -1) *)
+  (* if List.is_empty available_pos then {Position.row = -1; column = -1}
+     else*)
+  List.random_element_exn available_pos
 ;;
 
 (* Exercise 3.2.
@@ -89,8 +93,10 @@ let _ = score
 let compute_next_move ~(me : Piece.t) ~(game_state : Game_state.t)
   : Position.t
   =
-  ignore random_move_strategy;
+  let pieces = game_state.pieces in
+  let game_kind = game_state.game_kind in
+  (* pos is a random Position of possible places AI can place its piece in *)
+  let pos = random_move_strategy ~game_kind ~pieces in
   ignore me;
-  ignore game_state;
-  { Position.row = 0; column = 0 }
+  pos
 ;;

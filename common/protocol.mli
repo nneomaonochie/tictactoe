@@ -109,6 +109,7 @@ module Position : sig
      row indexes increment downwards.
 
      column indexes increment rightwards. *)
+
   type t =
     { row : int
     ; column : int
@@ -159,6 +160,7 @@ module Game_state : sig
 
   val get_player : t -> piece:Piece.t -> Player.t
   val to_string_hum : t -> string
+  val get_starting_board : Game_kind.t -> Position.t list
 end
 
 module Show_all_games_with_two_players : sig

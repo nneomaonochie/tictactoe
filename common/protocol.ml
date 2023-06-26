@@ -173,6 +173,15 @@ module Game_state = struct
     match piece with Piece.X -> t.player_x | O -> t.player_o
   ;;
 
+  let get_starting_board t =
+    List.concat_map
+      (List.range 0 (Game_kind.board_length t))
+      ~f:(fun row ->
+        List.map
+          (List.range 0 (Game_kind.board_length t))
+          ~f:(fun column -> { Position.row; column }))
+  ;;
+
   let to_string_hum
     { game_id; game_kind; player_x; player_o; pieces; game_status }
     =
