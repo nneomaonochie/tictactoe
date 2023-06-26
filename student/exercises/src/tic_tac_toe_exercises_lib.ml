@@ -99,6 +99,10 @@ let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
       
       
       STRATEGY:
+
+      Jose suggests I follow the gif where i check one, then check 4 in a row consecutively
+
+
       1. using all_pos, check each index -> check if index is a KEY for pieces
           - if not a key, it doesnt have a piece on it so nothing to evaluate
           - if it IS a key, it is a Piece -> store if X or O, then iterate if you can find TTT with it
