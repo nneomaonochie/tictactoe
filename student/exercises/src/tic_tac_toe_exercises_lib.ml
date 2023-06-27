@@ -81,49 +81,56 @@ let available_moves
 
    After you are done with this implementation, you can uncomment out
    "evaluate" test cases found below in this file. *)
-let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
-  : Evaluation.t
-  =
-  (* checks if new Position is filled on board and is the same piece as piece we are comparing it to *)
-  let same_piece ~(pieces : Piece.t Position.Map.t) ~(old_pos:Position.t) ~(new_pos): bool = 
 
-    let piece_to_compare = Map.find pieces old_pos (*match Map.find pieces old_pos with|None -> () | Some Piece -> Piece.t | in *)
-    let (piece_string : string) = match piece_to_compare with | None -> "None" | Some piece_to_compare -> Piece.to_string piece_to_compare| in 
-    if Map.mem pieces new_pos && (Piece.equal (Map.find pieces new_pos) piece_to_compare)
-      then true
-    else false
-  in
+  (* checks if new Position is filled on board and is the same piece as piece we are comparing it to *)
+    let same_piece ~(pieces : Piece.t Position.Map.t) ~(old_pos:Position.t) ~(new_pos): bool = 
+      let old_piece = Map.find pieces old_pos in
+      let new_piece = Map.find pieces new_pos in 
+      match old_piece, new_piece with |None, None | Some _, None | None, Some _ -> false | Some old_piece, Some new_piece -> Piece.equal old_piece new_piece ;;
+
+(* evalues if a win has occured or not *)
+   let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
+  : Evaluation.t =
 
   (* returns true if it finds a win *)
-  let rec find_win ~current_count ~direction_index ~(length_to_win : int) ~current_pos: Position.t = (* how do we account for the piece with jsut the position? *)
+  let rec find_win ~current_count ~direction_index ~(length_to_win : int) ~current_pos = 
     (* base case - if the current count matches length to win, we have a win*)
     if current_count = length_to_win then true 
-    else if direction_index = List.length all_offsets then false (* this needs to keep bubbling up and up and up*)
-    else  (* all_offsets = [N, NW, W, SW, S, SE, E, NE]*)
+    (* if the index exceeds indecis of all_offsets, then we went through all options and we need to return false *)
+    else if direction_index = List.length Position.all_offsets then false 
+    else 
+      (* list of directions based off of current pos*)
+      let directions current_pos f : Position.t= 
+        f current_pos
+    in
+    let new_dir = List.map Position.all_offsets ~f:(directions (current_pos)) in
+    (* this is the position we are going to check the direction in *)
+    let new_pos = List.nth_exn new_dir direction_index in 
+    (* if this is not bounds or it is not the piece we are looking for then we want to try again *)
+    if not (Position.in_bounds new_pos ~game_kind && same_piece ~pieces ~old_pos:current_pos ~new_pos:new_pos) then 
+      (* if current_count = 1, we are at the original piece we were observing and will try a different direction *)
+        (if current_count = 1 then find_win ~current_count:current_count ~direction_index:(direction_index + 1) ~current_pos:current_pos else false ) 
+    (* if in bounds and the piece we're looking for, we keep going forward*)
+      else 
+        let continues = find_win ~current_count: (current_count + 1) ~direction_index ~length_to_win ~current_pos:new_pos = true in
+        if current_count = 1 && continues = false then find_win ~current_count:current_count ~direction_index:(direction_index + 1) ~current_pos:current_pos else false
+
+      in
     
-      let directions = all_offsets current_pos in (* list of directions based off of current pos*)
-      let position_to_check = List.nth directions direction_index in (* this is the position we are going to check the direction in *)
+(* what if instead of a list of possible directions, we had a list of tuples - Position.t * DIRECTION - that way we can ensure we always go the same direction
+   
+  We could do a List.exists or something similar to that where we have [(0,0, UP) (0,1, NORTH_WEST), (1,0, WEST), etc] and we apply a function to every element of  the list where we see if a CHAIN of direction
+    is possible - so instead of recursing the direction and switching the direction in the call, we recurse the direction but when done recursing, we "switch" directions by going down the list
+  of the stuff
+  *)
 
-      (* if this is not bounds or it is not the piece  we are looking for *)
-      if not (Position.in_bounds position_to_check && same_piece ~pieces ~old_pos:current_pos ~new_pos:position_to_check) then 
-           (if current_count = 1 then find_win ~current_count: current_count ~direction_index:direction_index + 1 ~current_pos:current_pos else false )  (* if count > 1, we need to bubble down*)
-      (* if go_in_new direction is false, we have no way of finding a win in any direction of OG - if true then we have found a direciton where it does work*)
-      else if (* if in bounds and the piece we're looking for, we keep going forward*)
-        (* not sure if this will work bc not same type*)
-        let continue_in_directon = find_win ~current_count: current_count + 1 ~direction_index ~length_to_win ~current_pos:new_pos in
-        if continue_in_directon = false && not (current_count > 1) then find_win ~current_count: current_count ~direction_index:direction_index + 1 ~current_pos:current_pos (* try again *) else
-          false
 
-;
 
-     
-    bubble up to the OG position by returning false if the call in direction is false AND count > 1 *)
-      (* filled_pos is a list of position that have pieces on them; EX: (1,1); (2,2); (0,1); (0,0) *)
-  let filled_pos = Map.keys pieces in 
-  (* if there is a position that we can find a win in, then we find a win *)
-    if List.exists filled_pos ~(f:find_win  ~current_count:1 ~direction_index:0 ~length_to_win ~length_to_win : game_kind.win_length )then (* change game_State *)
-  
-;;
+
+
+    if List.exists filled_pos ~(f:find_win  ~current_count:1 ~direction_index:0 ~length_to_win ~length_to_win : game_kind.win_length )then (*change game_State*)
+  Evaluation.Illegal_state;
+    ;;
 
 (* Exercise 3. *)
 let winning_moves
