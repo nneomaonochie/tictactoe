@@ -104,7 +104,7 @@ let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
 
 
       1. using all_pos, check each index -> check if index is a KEY for pieces
-          - if not a key, it doesnt have a piece on it so nothing to evaluate
+          - if not a key, it dont have a piece on it so nothing to evaluate
           - if it IS a key, it is a Piece -> store if X or O, then iterate if you can find TTT with it
               - ASSUMING ALL_POS IS ORDERED LIKE MATRIX, keep checking right until length_to_win is met, 
               then down and diagonal (like my connect four or 4Queens)
@@ -114,9 +114,59 @@ let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
       
       
       *)
-  ignore pieces;
-  ignore game_kind;
-  failwith "Implement me!"
+  (* This is the list of all positions that are possible on a board *)
+  let all_positions = Game_state.get_starting_board game_kind in
+  (* list of functions *)
+
+  (* checks if new Position is filled on board and is the same piece as old piece *)
+  let same_piece ~pieces ~old_pos:Position.t ~new_pos = 
+    let piece_to_compare = Map.find pieces old_pos in
+    if Map.mem pieces new_pos && Map.find pieces new_pos = piece_to_compare
+      then true
+    else false
+;
+
+  (* returns true if it finds a win *)
+  let rec find_win ~current_count ~direction_index ~(length_to_win : int) ~current_pos: Position.t = (* how do we account for the piece with jsut the position? *)
+    (* base case - if the current count matches length to win, we have a win*)
+    if current_count = length_to_win then true 
+    else if direction_index = List.length all_offsets then false (* this needs to keep bubbling up and up and up*)
+    else  (* all_offsets = [N, NW, W, SW, S, SE, E, NE]*)
+    
+      let directions = all_offsets current_pos in (* list of directions based off of current pos*)
+      let position_to_check = List.nth directions direction_index in (* this is the position we are going to check the direction in *)
+      if not (Position.in_bounds position_to_check && same_piece ~pieces ~old_pos:current_pos ~new_pos:position_to_check) then 
+          let go_in_new_direction = find_win ~current_count: current_count ~direction_index:direction_index + 1 ~current_pos:current_pos in (* this is where i stopped as of 12:30p 6/27*)
+      else let continue_in_directon = find_win ~current_count: current_count + 1 ~direction_index ~length_to_win ~current_pos:new_pos
+
+;
+
+
+
+
+
+    (* we want current_pos to be (1,1) -> we want to up all_offsets[0] on it and see if (0,1) is in pieces, and THEN if it maps to the same value (could do this before, worry about it later)
+      if up_pos is in pieces and maps to same list, count++ then recurse again with new_pos being current_pos with the same direction 
+      direction index lets me know which of the directions to try at a time
+      
+      *)
+    
+      (* for (int i = 0; i < all_offsets.length; i++) {
+      all_offsets[i] current_pos
+
+    }  
+      *)
+
+
+      
+  (* go through list of Direction function -> if Posisiont is in pieces AND maps to the same piece, then check again with the SAME function
+     
+    bubble up to the OG position by returning false if the call in direction is false AND count > 1 *)
+      (* filled_pos is a list of position that have pieces on them; EX: (1,1); (2,2); (0,1); (0,0) *)
+  let filled_pos = Map.keys pieces in 
+  (* if there is a position that we can find a win in, then we find a win *)
+    if List.exists filled_pos ~(f:find_win  ~current_count:1 ~direction_index:0 ~length_to_win ~length_to_win : game_kind.win_length )then (* change game_State *)
+  
 ;;
 
 (* Exercise 3. *)

@@ -139,8 +139,8 @@ module Position = struct
 
   let all_offsets =
     let ( >> ) = Fn.compose in
-    [ up
-    ; up >> right
+    [ up (* N*)
+    ; up >> right (* NW*)
     ; right
     ; right >> down
     ; down
