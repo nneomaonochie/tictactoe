@@ -83,103 +83,40 @@ let available_moves
    "evaluate" test cases found below in this file. *)
 
   (* checks if new Position is filled on board and is the same piece as piece we are comparing it to *)
-    (* let same_piece ~(pieces : Piece.t Position.Map.t) ~(old_pos:Position.t) ~(new_pos): bool = 
+    
+    let same_piece (pieces : Piece.t Position.Map.t) ~old_pos ~(new_pos : Position.t): bool = 
       let old_piece = Map.find pieces old_pos in
       let new_piece = Map.find pieces new_pos in 
-      match old_piece, new_piece with |None, None | Some _, None | None, Some _ -> false | Some old_piece, Some new_piece -> Piece.equal old_piece new_piece ;; *)
-
-(* evalues if a win has occured or not *)
-   let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
-  : Evaluation.t =
-  (* for all of the filled positions, we are going to see if we can find a winner *)
-    (* going to change for ALL of positions we are checking, starting with one to get logic down*)
-    let test_pos = List.nth_exn (Map.keys pieces) 0 in
-    (* generate a list of potential win conditions from the coordinate - (if going through all, 4 directions, if going through pieces, you need 8)*)
-    
-
-
-
-
-    (* let l = Position.left test_pos in (* generates one position left of the current pos *)
-    let m = Position.left l in this is left of the position before *)
-
-ignore game_kind;
-    Evaluation.Illegal_state;
-  ;;
+      match old_piece, new_piece with |None, None | Some _, None | None, Some _ -> false | Some old_piece, Some new_piece -> Piece.equal old_piece new_piece ;;
 
     (* list of all coordinates to right to get 3 or 5 in a row *)
-    let chain_right list =
-      let added_list = List.append list [(Position.right (List.hd_exn (List.rev list)))] in
+    let chain_dir ~offset list  =
+      let added_list = List.append list [(offset (List.hd_exn (List.rev list)))] in
       added_list
-    in
-    (* let li = chain_right [test_pos] in this will chain right once *)
-    (*print_endline li*)
+    ;;
 
-let%expect_test "Chaining right" = 
-  let a = chain_right [{Position.row = 1; column = 1}]
-  List.equal a [{Position.row = 1; column = 1}; {Position.row = 1; column = 2}] in
-  let sf (elem : Position.t) = 
-    print_endline (Position.to_string elem)
-  in
-  let f = List.iter a ~f:sf in
-  (* [%expect {|(1,1)| (1,2) |}] in *)
-  f
+    (* evalues if a win has occured or not *)
+    let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
+    : Evaluation.t =
+    (* returns the original position's piece if every element in a list is the same piece as the Position we are checking with *)
+    (* returns None if list is not a winning chain *)
+    let check_for_win list = 
+      let original_pos = List.hd_exn list in
+      if List.for_all list ~f:(fun elem -> same_piece pieces ~old_pos:(original_pos) ~new_pos:elem) then Map.find pieces original_pos 
+      else None
+    in
+   (* creates a list of chains of all possible locations a win could occur and returns a piece should all pieces in a chain be the same piece *)
+   let check_keys_for_chain pos = 
+        let all_direction_chains_for_pos = List.map Position.all_offsets ~f:(fun offset -> let chain_dir = chain_dir ~offset in Fn.apply_n_times ~n:(Game_kind.win_length game_kind - 1)chain_dir [pos]) in
+        let winning_piece = List.find_map all_direction_chains_for_pos ~f:check_for_win in
+        winning_piece
+      in
+    (* if a piece in a set has a win, we change the evaluation *)
+    let winning_piece = List.find_map (Map.keys pieces) ~f:check_keys_for_chain in
+    match winning_piece with | None -> Evaluation.Game_continues | Some winning_piece -> Evaluation.Game_over {winner = Some winning_piece}
   ;;
 
 
-    (* let filled_spaces = Map.keys pieces in
-    (* change later to iterate through the ENTIRE list -rn its one at a time *)
-    let current_pos = List.nth_exn filled_spaces 0 in (* this is the first piece filled out - maybe i should start at the end for most sucess *)
-    (* applies direction functions from all offsets on the position given*)
-    let directions (position : Position.t) f : (Position.t * (Position.t -> Position.t))= 
-      ((f position), f)
-    in
-    (* a list of positions in the different directions that were applied *)
-    let directions_to_check = List.map Position.all_offsets ~f:(directions (current_pos)) in *)
-
-
-
-  (* returns true if it finds a win
-  let rec find_win ~current_count ~direction_index ~(length_to_win : int) ~current_pos = 
-    (* base case - if the current count matches length to win, we have a win*)
-    if current_count = length_to_win then true 
-    (* if the index exceeds indecis of all_offsets, then we went through all options and we need to return false *)
-    else if direction_index = List.length Position.all_offsets then false 
-    else 
-      (* list of directions based off of current pos*)
-      let directions current_pos f : Position.t= 
-        f current_pos
-    in
-    (* a list of Positions based off the directions applied to the current_pos *)
-    let new_dir = List.map Position.all_offsets ~f:(directions (current_pos)) in
-    (* the plan is to put position in elem1 and the function associated with it in elem2*)
-    let test elem1 elem2 = (elem1, elem2) in
-    let possibilities = List.iter2 new_dir Position.all_offsets ~f:test in
-    (* this is the position we are going to check the direction in *)
-    (*let new_pos = List.nth_exn new_dir direction_index in *)
-    let new_pos = List.nth_exn possibilities direction_index in (* should me ((r,c), UP)*)
-    (* if this is not bounds or it is not the piece we are looking for then we want to try again *)
-    if not (Position.in_bounds new_pos ~game_kind && same_piece ~pieces ~old_pos:current_pos ~new_pos:new_pos) then
-
-      (* if current_count = 1, we are at the original piece we were observing and will try a different direction *)
-        (if current_count = 1 then find_win ~current_count:current_count ~direction_index:(direction_index + 1) ~current_pos:current_pos else false )
-      
-      
-    (* if in bounds and the piece we're looking for, we keep going forward*)
-      else 
-        let continues = find_win ~current_count: (current_count + 1) ~direction_index ~length_to_win ~current_pos:new_pos = true in
-        if current_count = 1 && continues = false then find_win ~current_count:current_count ~direction_index:(direction_index + 1) ~current_pos:current_pos else false
-
-      in *)
-    
-(* what if instead of a list of possible directions, we had a list of tuples - Position.t * DIRECTION - that way we can ensure we always go the same direction
-   
-  We could do a List.exists or something similar to that where we have [(0,0, UP) (0,1, NORTH_WEST), (1,0, WEST), etc] and we apply a function to every element of  the list where we see if a CHAIN of direction
-    is possible - so instead of recursing the direction and switching the direction in the call, we recurse the direction but when done recursing, we "switch" directions by going down the list
-  of the stuff
-  *)
-    (* if List.exists filled_pos ~(f:find_win  ~current_count:1 ~direction_index:0 ~length_to_win ~length_to_win : game_kind.win_length )then (*change game_State*)
-  Evaluation.Illegal_state; *)
 
 
 (* Exercise 3. *)
@@ -303,6 +240,16 @@ let%expect_test "print_non_win" =
     O
     O X |}]
 ;;
+
+let%expect_test "Chaining right" = (**) 
+let a =  List.map Position.all_offsets ~f:(fun offset -> let chain_dir = chain_dir ~offset in Fn.apply_n_times ~n:4 chain_dir [{Position.row=0; column = 0}]) in
+  (*Fn.apply_n_times ~n:4 chite [{Position.row = 0; column = 5}] in  *)
+print_s [%sexp (a : Position.t list list)];
+[%expect
+{|
+([((row 0) (column 0))]; ((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];|}]
+;;
+
 
 (* After you've implemented [available_moves], uncomment these tests! *)
 let%expect_test "yes available_moves" =

@@ -173,7 +173,7 @@ module Game_state = struct
     match piece with Piece.X -> t.player_x | O -> t.player_o
   ;;
 
-  let get_fgag_board t =
+  let get_starting_board t =
     List.concat_map
       (List.range 0 (Game_kind.board_length t))
       ~f:(fun row ->
