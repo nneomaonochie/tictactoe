@@ -116,9 +116,6 @@ let available_moves
     match winning_piece with | None -> Evaluation.Game_continues | Some winning_piece -> Evaluation.Game_over {winner = Some winning_piece}
   ;;
 
-
-
-
 (* Exercise 3. *)
 let winning_moves
   ~(me : Piece.t)
@@ -126,10 +123,16 @@ let winning_moves
   ~(pieces : Piece.t Position.Map.t)
   : Position.t list
   =
-  ignore me;
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
+  (* returns true if the position given helps the current player win the game*)
+  let check_winning_combos pos = 
+    let pieces = Map.set pieces ~key:pos ~data:me in
+    let check_eval = evaluate ~game_kind ~pieces in
+    let winner_found : bool = match check_eval with |Evaluation.Game_over{winner = Some winner} -> Piece.equal winner me | _ -> false in
+    winner_found
+  in
+
+  let available_pos = available_moves ~game_kind ~pieces in 
+  List.filter available_pos ~f:check_winning_combos
 ;;
 
 (* Exercise 4. *)
@@ -247,7 +250,22 @@ let a =  List.map Position.all_offsets ~f:(fun offset -> let chain_dir = chain_d
 print_s [%sexp (a : Position.t list list)];
 [%expect
 {|
-([((row 0) (column 0))]; ((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];((row 0) (column 0))];|}]
+((((row 0) (column 0)) ((row -1) (column 0)) ((row -2) (column 0))
+  ((row -3) (column 0)) ((row -4) (column 0)))
+ (((row 0) (column 0)) ((row -1) (column 1)) ((row -2) (column 2))
+  ((row -3) (column 3)) ((row -4) (column 4)))
+ (((row 0) (column 0)) ((row 0) (column 1)) ((row 0) (column 2))
+  ((row 0) (column 3)) ((row 0) (column 4)))
+ (((row 0) (column 0)) ((row 1) (column 1)) ((row 2) (column 2))
+  ((row 3) (column 3)) ((row 4) (column 4)))
+ (((row 0) (column 0)) ((row 1) (column 0)) ((row 2) (column 0))
+  ((row 3) (column 0)) ((row 4) (column 0)))
+ (((row 0) (column 0)) ((row 1) (column -1)) ((row 2) (column -2))
+  ((row 3) (column -3)) ((row 4) (column -4)))
+ (((row 0) (column 0)) ((row 0) (column -1)) ((row 0) (column -2))
+  ((row 0) (column -3)) ((row 0) (column -4)))
+ (((row 0) (column 0)) ((row -1) (column -1)) ((row -2) (column -2))
+  ((row -3) (column -3)) ((row -4) (column -4))))|}]
 ;;
 
 
@@ -275,22 +293,22 @@ let%expect_test "no available_moves" =
 
 (* When you've implemented the [evaluate] function, uncomment the next two
    tests! *)
-(* let%expect_test "evalulate_win_for_x" = print_endline (evaluate
+let%expect_test "evalulate_win_for_x" = print_endline (evaluate
    ~game_kind:win_for_x.game_kind ~pieces:win_for_x.pieces |>
-   Evaluation.to_string); [%expect {| (Win (X)) |}] ;;
+   Evaluation.to_string); [%expect {| (Game_over(winner(X))) |}] ;;
 
    let%expect_test "evalulate_non_win" = print_endline (evaluate
    ~game_kind:non_win.game_kind ~pieces:non_win.pieces |>
-   Evaluation.to_string); [%expect {| Game_continues |}] ;; *)
+   Evaluation.to_string); [%expect {| Game_continues |}] ;;
 
 (* When you've implemented the [winning_moves] function, uncomment this
    test! *)
-(*let%expect_test "winning_move" = let positions = winning_moves
+let%expect_test "winning_move" = let positions = winning_moves
   ~game_kind:non_win.game_kind ~pieces:non_win.pieces ~me:Piece.X in print_s
-  [%sexp (positions : Position.t list)]; [%expect {| ((((row 1) (column 1))))
+  [%sexp (positions : Position.t list)]; [%expect {| (((row 1) (column 1)))
   |}]; let positions = winning_moves ~game_kind:non_win.game_kind
   ~pieces:non_win.pieces ~me:Piece.O in print_s [%sexp (positions :
-  Position.t list)]; [%expect {| () |}] ;;*)
+  Position.t list)]; [%expect {| () |}] ;;
 
 (* When you've implemented the [losing_moves] function, uncomment this
    test! *)
