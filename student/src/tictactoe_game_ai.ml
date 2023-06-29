@@ -76,21 +76,51 @@ let score
   ~(pieces : Piece.t Position.Map.t)
   : float
   =
-  let piece = me in
   let eval = Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces in
-  let score = match eval with | Evaluation.Game_over {winner = Some piece} -> max_float | Evaluation.Game_over {winner = Some (Piece.flip piece)} -> max_float * -1 | _ -> 0.0 in
+  let score =
+    match eval with
+    | Tic_tac_toe_exercises_lib.Evaluation.Game_over { winner = Some piece }
+      -> (* if my piece wins, we get positive infinity; If the other team wins we get negative infinity; Right now anything else will return 0.0 *)
+      (match Piece.equal piece me with
+       | true -> Float.infinity
+       | false -> Float.neg_infinity)
+    | _ -> 0.0
+  in
   score
 ;;
 
-let _ = score
 
-(*
-let minimax position depth (max_player : bool) = 
-  if depth = 0 (* || gave over in position*) then (*static eval of position *) 0.0 in
-  if max_player then let max_eval = -1 * max_int in
-  (* for each child of position : eval = minimax(child, depth - 1, false) *)
-;; *)
+let sample_pieces ~pieces ~me pos  = 
+  let pieces = Map.set pieces ~key:pos ~data:me in
+  pieces
+;;
 
+(* takes in a Position, a depth, and if current piece is the maximizing player to return the 
+   highest score possible to anticipate which position would yield the best results*)
+let rec minimax ~(pieces : Piece.t Position.Map.t) ~game_kind ~me ~(d : int) ~(maxPlayer : bool) = 
+  (* pos is terminal node [no children] -> game ends by a win, loss, or tie *)
+  if d = 0 || (match (Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces) with | Tic_tac_toe_exercises_lib.Evaluation.Game_over {winner = Some piece } -> true | _ -> false) 
+    then score ~me ~game_kind ~pieces 
+else (
+  (* a list of available positions that are unfilled *)
+  let available_pos = Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces in
+
+  (* a list of Map Pieces with the same indices as positions *)
+  let possible_pieces = List.map available_pos ~f:(sample_pieces ~pieces ~me) in
+  if maxPlayer then (
+  let value = Float.neg_infinity in
+  let list_of_scores = match (List.max_elt (List.map possible_pieces ~f:(minimax ~game_kind ~me ~d:(d - 1) ~maxPlayer:false))) with | None -> [] | _ -> Some Float list in
+  let value = Float.max value (List.max_elt list_of_scores) in 
+  value)
+else (
+  let value = Float.infinity in
+  let list_of_scores = match (List.min_elt (List.map possible_pieces ~f:(minimax ~game_kind ~me ~d:(d - 1) ~maxPlayer:true))) with | None -> [] | _ -> Some Float list in
+  let value = Float.max value (List.min_elt list_of_scores) in 
+  value
+)
+      (* get all availible positions *)
+    ignore piece;
+;;
 
 
 
@@ -105,11 +135,11 @@ let minimax position depth (max_player : bool) =
    available spots to pick. *)
 let compute_next_move ~(me : Piece.t) ~(game_state : Game_state.t)
   : Position.t
-  =
+  = (* depth is how many moves user  wants to look in the future) *)
   let pieces = game_state.pieces in
   let game_kind = game_state.game_kind in
   (* pos is a random Position of possible places AI can place its piece in *)
-  let pos =
+  let pos = (* minimax current_pos 4 true -> returns move we should go to next *)
     pick_winning_move_or_block_if_possible_strategy ~me ~game_kind ~pieces
   in
   pos
