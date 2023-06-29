@@ -17,9 +17,6 @@ let random_move_strategy
   let available_pos =
     Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces
   in
-  (* if no availible positons, it creates a position of (-1, -1) *)
-  (* if List.is_empty available_pos then {Position.row = -1; column = -1}
-     else*)
   List.random_element_exn available_pos
 ;;
 
@@ -30,20 +27,12 @@ let random_move_strategy
 
    After you are done, update [compute_next_move] to use your
    [pick_winning_move_if_possible_strategy]. *)
-let pick_winning_move_if_possible_strategy
-  ~(me : Piece.t)
-  ~(game_kind : Game_kind.t)
-  ~(pieces : Piece.t Position.Map.t)
-  : Position.t
-  =
-  ignore me;
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
-;;
-
-(* disables unused warning. Feel free to delete once it's used. *)
-let _ = pick_winning_move_if_possible_strategy
+(* let pick_winning_move_if_possible_strategy ~(me : Piece.t) ~(game_kind :
+   Game_kind.t) ~(pieces : Piece.t Position.Map.t) : Position.t = let
+   winning_pos = Tic_tac_toe_exercises_lib.winning_moves ~me ~game_kind
+   ~pieces in if List.is_empty winning_pos then
+   pick_winning_move_or_block_if_possible_strategy ~me ~game_kind ~pieces
+   else List.random_element_exn winning_pos ;; *)
 
 (* Exercise 4.2.
 
@@ -58,14 +47,28 @@ let pick_winning_move_or_block_if_possible_strategy
   ~(pieces : Piece.t Position.Map.t)
   : Position.t
   =
-  ignore me;
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
+  let winning_pos =
+    Tic_tac_toe_exercises_lib.winning_moves ~me ~game_kind ~pieces
+  in
+  if not (List.is_empty winning_pos)
+  then List.random_element_exn winning_pos
+  else (
+    (* the case that there are no moves that can help current piece win in
+       one more *)
+    (* blocking_pos is the list of Positions that will cause the opponent to
+       lose *)
+    let blocking_pos =
+      Tic_tac_toe_exercises_lib.winning_moves
+        ~me:(Piece.flip me)
+        ~game_kind
+        ~pieces
+    in
+    (* if there are no moves that block an opponents' win then pick a random
+       move *)
+    if not (List.is_empty blocking_pos)
+    then List.random_element_exn blocking_pos
+    else random_move_strategy ~game_kind ~pieces)
 ;;
-
-(* disables unused warning. Feel free to delete once it's used. *)
-let _ = pick_winning_move_or_block_if_possible_strategy
 
 let score
   ~(me : Piece.t)
@@ -96,7 +99,8 @@ let compute_next_move ~(me : Piece.t) ~(game_state : Game_state.t)
   let pieces = game_state.pieces in
   let game_kind = game_state.game_kind in
   (* pos is a random Position of possible places AI can place its piece in *)
-  let pos = random_move_strategy ~game_kind ~pieces in
-  ignore me;
+  let pos =
+    pick_winning_move_or_block_if_possible_strategy ~me ~game_kind ~pieces
+  in
   pos
 ;;

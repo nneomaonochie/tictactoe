@@ -130,7 +130,6 @@ let winning_moves
     let winner_found : bool = match check_eval with |Evaluation.Game_over{winner = Some winner} -> Piece.equal winner me | _ -> false in
     winner_found
   in
-
   let available_pos = available_moves ~game_kind ~pieces in 
   List.filter available_pos ~f:check_winning_combos
 ;;
@@ -142,10 +141,17 @@ let losing_moves
   ~(pieces : Piece.t Position.Map.t)
   : Position.t list
   =
-  ignore me;
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
+  (* returns false if a position given is included in the Position list given *)
+  let remove_similarities ~oppos pos = 
+    not (List.exists oppos ~f:(Position.equal pos))
+  in
+  let available_pos = available_moves ~game_kind ~pieces in 
+  let opposite_piece = Piece.flip me in
+  let opposing_wins = winning_moves ~me:opposite_piece ~game_kind ~pieces in
+  if List.is_empty opposing_wins then [] else
+  (* this generates a list of positions the current piece can be placed excluding the positions that would cause the opposing piece to win *)
+  (* essentially, choosing any of these positions guarantees the current player will lose *)
+  List.filter available_pos ~f:(remove_similarities ~oppos:opposing_wins)
 ;;
 
 let exercise_one =
@@ -312,10 +318,10 @@ let%expect_test "winning_move" = let positions = winning_moves
 
 (* When you've implemented the [losing_moves] function, uncomment this
    test! *)
-(* let%expect_test "print_losing" = let positions = losing_moves
+let%expect_test "print_losing" = let positions = losing_moves
    ~game_kind:non_win.game_kind ~pieces:non_win.pieces ~me:Piece.X in print_s
    [%sexp (positions : Position.t list)]; [%expect {| () |}]; let positions =
    losing_moves ~game_kind:non_win.game_kind ~pieces:non_win.pieces
    ~me:Piece.O in print_s [%sexp (positions : Position.t list)]; [%expect {|
    ((((row 0) (column 1)) ((row 0) (column 2)) ((row 1) (column 2)) ((row 2)
-   (column 1)))) |}] ;; *)
+   (column 1)))) |}] ;;
