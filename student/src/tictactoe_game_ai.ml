@@ -76,13 +76,23 @@ let score
   ~(pieces : Piece.t Position.Map.t)
   : float
   =
-  ignore me;
-  ignore game_kind;
-  ignore pieces;
-  0.0
+  let piece = me in
+  let eval = Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces in
+  let score = match eval with | Evaluation.Game_over {winner = Some piece} -> max_float | Evaluation.Game_over {winner = Some (Piece.flip piece)} -> max_float * -1 | _ -> 0.0 in
+  score
 ;;
 
 let _ = score
+
+(*
+let minimax position depth (max_player : bool) = 
+  if depth = 0 (* || gave over in position*) then (*static eval of position *) 0.0 in
+  if max_player then let max_eval = -1 * max_int in
+  (* for each child of position : eval = minimax(child, depth - 1, false) *)
+;; *)
+
+
+
 
 (* [compute_next_move] is your Game AI's function.
 
