@@ -95,31 +95,38 @@ let sample_pieces ~pieces ~me pos  =
   pieces
 ;;
 
+let compare_float_pos (t1 : (float, Position.t))  = 
+  fun(a1, _) -> (a2, _) -> Float.compare a1 a2
+;;
+
 (* takes in a Position, a depth, and if current piece is the maximizing player to return the 
    highest score possible to anticipate which position would yield the best results*)
-let rec minimax ~(pieces : Piece.t Position.Map.t) ~game_kind ~me ~(d : int) ~(maxPlayer : bool) = 
+let rec minimax ~pos ~(pieces_old : Piece.t Position.Map.t) ~game_kind ~me ~(d : int) ~(maxPlayer : bool) = 
+  (* pieces_new is the Map game_State where we decide to make the decision of going through with the given pos*)
+  let pieces_new = Map.set pieces_old ~key:pos ~data:me in
   (* pos is terminal node [no children] -> game ends by a win, loss, or tie *)
-  if d = 0 || (match (Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces) with | Tic_tac_toe_exercises_lib.Evaluation.Game_over {winner = Some piece } -> true | _ -> false) 
-    then score ~me ~game_kind ~pieces 
+  if d = 0 || (match (Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces:pieces_new) with | Tic_tac_toe_exercises_lib.Evaluation.Game_over {winner = Some piece } -> true | _ -> false) 
+    then (score ~me ~game_kind ~pieces:pieces_new, pos)
 else (
   (* a list of available positions that are unfilled *)
-  let available_pos = Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces in
-
+  let available_pos = Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces:pieces_new in
   (* a list of Map Pieces with the same indices as positions *)
-  let possible_pieces = List.map available_pos ~f:(sample_pieces ~pieces ~me) in
+  let possible_pieces = List.map available_pos ~f:(sample_pieces ~pieces:pieces_new ~me) in
   if maxPlayer then (
-  let value = Float.neg_infinity in
-  let list_of_scores = match (List.max_elt (List.map possible_pieces ~f:(minimax ~game_kind ~me ~d:(d - 1) ~maxPlayer:false))) with | None -> [] | _ -> Some Float list in
-  let value = Float.max value (List.max_elt list_of_scores) in 
-  value)
-else (
-  let value = Float.infinity in
-  let list_of_scores = match (List.min_elt (List.map possible_pieces ~f:(minimax ~game_kind ~me ~d:(d - 1) ~maxPlayer:true))) with | None -> [] | _ -> Some Float list in
-  let value = Float.max value (List.min_elt list_of_scores) in 
-  value
-)
-      (* get all availible positions *)
-    ignore piece;
+    let value = Float.neg_infinity in
+  (* the List.map should return a list of scores for each potential position that can be placed *)
+    let list_of_scores = List.map possible_pieces ~f:(fun p -> (minimax ~pieces:p ~game_kind ~me ~d:(d - 1) ~maxPlayer:false)) in
+    (* this is going to pick the maximum score of the list of scores and compares it to value *)
+    let max_score : float = match (List.max_elt list_of_scores ~compare:compare_float_pos) with | None -> Float.neg_infinity | Some float -> float in 
+    let value = Float.max value max_score in 
+    value)
+  else ( (* if it is the minimizing player *)
+    let value = Float.infinity in (* do i put me or Me.flip? i think still me *)
+    let list_of_scores = List.map possible_pieces ~f:(fun p -> (minimax ~pieces:p ~game_kind ~me ~d:(d - 1) ~maxPlayer:true)) in
+    let min_score : float = match (List.min_elt list_of_scores ~compare:Float.compare) with | None -> Float.infinity | Some float -> float in 
+    let value = Float.min value min_score in 
+    value
+  ))
 ;;
 
 
@@ -139,8 +146,15 @@ let compute_next_move ~(me : Piece.t) ~(game_state : Game_state.t)
   let pieces = game_state.pieces in
   let game_kind = game_state.game_kind in
   (* pos is a random Position of possible places AI can place its piece in *)
-  let pos = (* minimax current_pos 4 true -> returns move we should go to next *)
-    pick_winning_move_or_block_if_possible_strategy ~me ~game_kind ~pieces
+  (* let us try to see 3 moves in the future*)
+
+
+  (* apply minimax on the children instead of at the root*)
+  let pos = minimax ~pieces ~game_kind ~me ~d:3 ~maxPlayer:true
+
+
+  (* let pos = (* minimax current_pos 4 true -> returns move we should go to next *)
+    pick_winning_move_or_block_if_possible_strategy ~me ~game_kind ~pieces *)
   in
   pos
 ;;
