@@ -47,27 +47,30 @@ let pick_winning_move_or_block_if_possible_strategy
   ~(pieces : Piece.t Position.Map.t)
   : Position.t
   =
-  let winning_pos =
-    Tic_tac_toe_exercises_lib.winning_moves ~me ~game_kind ~pieces
-  in
-  if not (List.is_empty winning_pos)
-  then List.random_element_exn winning_pos
+  if Map.is_empty pieces && Game_kind.board_length game_kind = 3
+  then { Position.row = 1; column = 1 }
   else (
-    (* the case that there are no moves that can help current piece win in
-       one more *)
-    (* blocking_pos is the list of Positions that will cause the opponent to
-       lose *)
-    let blocking_pos =
-      Tic_tac_toe_exercises_lib.winning_moves
-        ~me:(Piece.flip me)
-        ~game_kind
-        ~pieces
+    let winning_pos =
+      Tic_tac_toe_exercises_lib.winning_moves ~me ~game_kind ~pieces
     in
-    (* if there are no moves that block an opponents' win then pick a random
-       move *)
-    if not (List.is_empty blocking_pos)
-    then List.random_element_exn blocking_pos
-    else random_move_strategy ~game_kind ~pieces)
+    if not (List.is_empty winning_pos)
+    then List.random_element_exn winning_pos
+    else (
+      (* the case that there are no moves that can help current piece win in
+         one more *)
+      (* blocking_pos is the list of Positions that will cause the opponent
+         to lose *)
+      let blocking_pos =
+        Tic_tac_toe_exercises_lib.winning_moves
+          ~me:(Piece.flip me)
+          ~game_kind
+          ~pieces
+      in
+      (* if there are no moves that block an opponents' win then pick a
+         random move *)
+      if not (List.is_empty blocking_pos)
+      then List.random_element_exn blocking_pos
+      else random_move_strategy ~game_kind ~pieces))
 ;;
 
 let score
@@ -91,11 +94,6 @@ let score
   score
 ;;
 
-let sample_pieces ~pieces ~me pos =
-  let pieces = Map.set pieces ~key:pos ~data:me in
-  pieces
-;;
-
 let compare_float_pos
   ((f1, p1) : float * Position.t)
   ((f2, p2) : float * Position.t)
@@ -107,12 +105,23 @@ let compare_float_pos
 
 let found_position pos avail_pos = not (Position.equal pos avail_pos)
 
-let max_float_pos ((f1, p1) : float * Position.t) ((f2, p2) : float * Position.t) =
-  if Float.compare f1 f2 >= 0 then (f1,p1) else (f2,p2)
+let max_float_pos
+  ((f1, p1) : float * Position.t)
+  ((f2, p2) : float * Position.t)
+  =
+  if Float.compare f1 f2 >= 0 then f1, p1 else f2, p2
 ;;
 
-let min_float_pos ((f1, p1) : float * Position.t) ((f2, p2) : float * Position.t) =
-  if Float.compare f1 f2 <= 0 then (f1,p1) else (f2,p2)
+let min_float_pos
+  ((f1, p1) : float * Position.t)
+  ((f2, p2) : float * Position.t)
+  =
+  if Float.compare f1 f2 <= 0 then f1, p1 else f2, p2
+;;
+
+let get_pos_floatpos ((f1, p1) : float * Position.t) =
+  ignore f1;
+  p1
 ;;
 
 (* takes in a Position, a depth, and if current piece is the maximizing
@@ -140,11 +149,11 @@ let rec minimax
      match
        Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces:pieces_new
      with
-     | Tic_tac_toe_exercises_lib.Evaluation.Game_over { winner = Some piece }
-       ->
+     | Tic_tac_toe_exercises_lib.Evaluation.Game_over
+         { winner = Some _piece } ->
        true
      | _ -> false
-  then (score ~me ~game_kind ~pieces:pieces_new, pos)
+  then score ~me ~game_kind ~pieces:pieces_new, pos
   else if maxPlayer
   then (
     let value = Float.neg_infinity, pos in
@@ -166,29 +175,29 @@ let rec minimax
     let max_score : float * Position.t =
       match List.max_elt list_of_scores ~compare:compare_float_pos with
       | None -> Float.neg_infinity, pos
-      | Some (float, Position.t) -> float, Position.t
+      | Some (max_score, move) -> max_score, move
     in
     let value = max_float_pos value max_score in
     value)
   else (
     (* if it is the minimizing player *)
-    let value = Float.infinity in
+    let value = Float.infinity, pos in
     (* do i put me or Me.flip? i think still me *)
     let list_of_scores =
-      List.map possible_pieces ~f:(fun p ->
+      List.map available_pos ~f:(fun p ->
         minimax
-        ~pos:p
-        ~pieces_old:pieces_new
-        ~game_kind
-        ~me
-        ~availible_pos
+          ~pos:p
+          ~pieces_old:pieces_new
+          ~game_kind
+          ~me
+          ~availible_pos
           ~d:(d - 1)
           ~maxPlayer:true)
     in
-    let min_score  =
-      match List.min_elt list_of_scores ~compare:Float.compare with
+    let min_score =
+      match List.min_elt list_of_scores ~compare:compare_float_pos with
       | None -> Float.infinity, pos
-      |  Some (float, Position.t) -> float, Position.t
+      | Some (min_score, move) -> min_score, move
     in
     let value = min_float_pos value min_score in
     value)
@@ -209,16 +218,30 @@ let compute_next_move ~(me : Piece.t) ~(game_state : Game_state.t)
   (* depth is how many moves user wants to look in the future) *)
   let pieces = game_state.pieces in
   let game_kind = game_state.game_kind in
-  let available_pos = Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces in
-  (* pos is a random Position of possible places AI can place its piece in *)
-  (* let us try to see 3 moves in the future*)
-
-  (* apply minimax on the children instead of at the root*)
-  let score_pos =
-    minimax ~pos: ~pieces_old:pieces ~game_kind ~me ~d:3 ~maxPlayer:true
-    (* let pos = (* minimax current_pos 4 true -> returns move we should go
-       to next *) pick_winning_move_or_block_if_possible_strategy ~me
-       ~game_kind ~pieces *)
+  let availible_pos =
+    Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces
   in
-  pos
+  (* this is what we think might be the best move - we verify by passing it
+     into minimax*)
+  let first_pos =
+    pick_winning_move_or_block_if_possible_strategy ~me ~game_kind ~pieces
+  in
+  (* apply minimax on the children instead of at the root*)
+  let list_of_scores =
+    List.map availible_pos ~f:(fun p ->
+      minimax
+        ~pos:p
+        ~pieces_old:pieces
+        ~game_kind
+        ~me
+        ~availible_pos
+        ~d:2
+        ~maxPlayer:true)
+  in
+  let max_score =
+    match List.max_elt list_of_scores ~compare:compare_float_pos with
+    | None -> Float.neg_infinity, first_pos
+    | Some (max_score, move) -> max_score, move
+  in
+  get_pos_floatpos max_score
 ;;
